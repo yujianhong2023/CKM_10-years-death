@@ -24,7 +24,7 @@ Race/Ethnicity (Mexican American, Other Hispanic, Non-Hispanic White, Non-Hispan
 
 Education Level (Less than 9th grade, 9-11th grade, High school diploma/GED, Some college/AA degree, College graduate or above)
 
-PIR Group (≤1.0, 1.0-1.9, 2.0-2.9, 3.0-3.9, ≥4.0)
+PIR Group (<1.0, 1.0-2.9, ≥3.0)
 
 Smoking Status (Never/Former/Current)
 
