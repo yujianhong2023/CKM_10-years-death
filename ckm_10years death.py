@@ -89,22 +89,6 @@ st.markdown("""
         color: #6c757d;
         margin-top: 0.2rem;
     }
-    .result-outcome {
-        font-size: 1.3rem;
-        font-weight: 600;
-        margin-top: 0.5rem;
-        padding: 0.4rem 1.5rem;
-        border-radius: 8px;
-        display: inline-block;
-    }
-    .outcome-death {
-        color: #dc3545;
-        background-color: #f8d7da;
-    }
-    .outcome-survive {
-        color: #28a745;
-        background-color: #d4edda;
-    }
     .result-prob-detail {
         margin-top: 0.4rem;
         font-size: 0.8rem;
@@ -196,7 +180,6 @@ st.markdown("""
         border-radius: 6px;
     }
 
-    /* Feature importance styling */
     .feature-importance-note {
         text-align: center;
         font-size: 0.8rem;
@@ -229,8 +212,7 @@ def load_model():
             except Exception as e:
                 continue
 
-    st.error(
-        "❌ Model file 'ckm_risk_model_10yr.pkl' not found. Please ensure the model file exists in the correct path.")
+    st.error("❌ Model file 'ckm_risk_model_10yr.pkl' not found. Please ensure the model file exists in the correct path.")
     st.info("💡 Expected paths checked:\n" + "\n".join(possible_paths))
     return None
 
@@ -248,7 +230,6 @@ continuous_features = artifacts['continuous_features']
 model_threshold = artifacts.get('threshold', 0.5)
 
 # ===== IMPORTANT: Override threshold to 0.50 for binary classification display =====
-# This means only patients with ≥ 50% mortality probability will be classified as "Mortality"
 DISPLAY_THRESHOLD = 0.50
 
 model_info = artifacts.get('model_info', {})
@@ -320,12 +301,10 @@ smoke_map = {
     "Former": 1,
     "Current": 2
 }
-# ===== MODIFIED: ACTIVITY as binary (0=No moderate/vigorous activity, 1=Has moderate/vigorous activity) =====
 activity_map = {
     "No moderate/vigorous activity": 0,
     "Has moderate/vigorous activity": 1
 }
-# ===== MODIFIED: LDL_GROUP as binary (1=<100 mg/dL, 2=≥100 mg/dL) =====
 ldl_group_map = {
     "<100 mg/dL": 1,
     "≥100 mg/dL": 2
@@ -370,8 +349,7 @@ with col_input:
 
     # ===== Continuous Variables =====
     st.markdown('<div class="input-card">', unsafe_allow_html=True)
-    st.markdown('<div class="input-card-title">📊 Clinical Measurements & Laboratory Values</div>',
-                unsafe_allow_html=True)
+    st.markdown('<div class="input-card-title">📊 Clinical Measurements & Laboratory Values</div>', unsafe_allow_html=True)
 
     col_age, col_n, col_hgb = st.columns(3)
     with col_age:
@@ -409,7 +387,6 @@ with col_input:
 
     col_ldl, col_crp, col_lbdphs = st.columns(3)
     with col_ldl:
-        # ===== MODIFIED: LDL Group with binary options =====
         ldl = st.selectbox(
             "LDL Cholesterol Level",
             options=list(ldl_group_map.keys()),
@@ -419,12 +396,13 @@ with col_input:
         crp = st.number_input("CRP (mg/L)", min_value=0.0, max_value=100.0, value=5.0, step=0.5,
                               help="C-Reactive Protein")
     with col_lbdphs:
-        lbdphs = st.number_input("LBDSPHSI", min_value=0.0, max_value=20.0, value=5.0, step=0.1,
+        lbdphs = st.number_input("Phosphorus (mmol/L)", min_value=0.0, max_value=20.0, value=5.0, step=0.1,
                                  help="Serum Phosphorus")
 
     col_lbxin, col_cancer, col_lung, col_ckm = st.columns(4)
     with col_lbxin:
-        lbxin = st.number_input("LBXIN (µg/L)", min_value=0.0, max_value=20.0, value=1.0, step=0.1,
+        # ===== MODIFIED: LBXIN label updated to uU/mL =====
+        lbxin = st.number_input("Insulin (uU/mL)", min_value=0.0, max_value=20.0, value=1.0, step=0.1,
                                 help="Serum Insulin")
     with col_cancer:
         cancer = st.selectbox("Cancer History", options=["No", "Yes"])
@@ -442,7 +420,7 @@ with col_input:
         sii = st.number_input("SII (×10⁹/L)", min_value=0, max_value=5000, value=500, step=50,
                               help="Systemic Immune-Inflammation Index")
     with col_shr:
-        shr = st.number_input("SHR (×10⁹/L)", min_value=0, max_value=5000, value=1000, step=50,
+        shr = st.number_input("SHR", min_value=0, max_value=5000, value=1000, step=50,
                               help="Systemic Hemodynamic Ratio")
 
     st.markdown('</div>', unsafe_allow_html=True)
@@ -472,7 +450,7 @@ def create_input_data():
         'ACR': acr,
         'UA': ua,
         'HBA1C': hba1c,
-        'LDL_GROUP': ldl_group_map[ldl],  # ===== MODIFIED: Binary LDL mapping =====
+        'LDL_GROUP': ldl_group_map[ldl],
         'CRP': crp,
         'LBDSPHSI': lbdphs,
         'LBXIN': lbxin,
@@ -509,32 +487,13 @@ with col_result:
             death_prob = prob * 100
             survival_prob = (1 - prob) * 100
 
-            # Determine outcome using 50% threshold
-            if prob >= DISPLAY_THRESHOLD:
-                outcome_text = "High Risk - Mortality"
-                outcome_class = "outcome-death"
-                outcome_icon = "⚠️"
-                interpret_class = "interpret-death"
-                interpret_title = "⚠️ High 10-Year Mortality Risk Detected"
-                interpret_text = f"Probability ≥ {DISPLAY_THRESHOLD * 100:.0f}%. Consider comprehensive clinical evaluation, specialist consultation, and intensive risk factor management."
-            else:
-                outcome_text = "Low Risk - Survived"
-                outcome_class = "outcome-survive"
-                outcome_icon = "✅"
-                interpret_class = "interpret-survive"
-                interpret_title = "✅ Low 10-Year Mortality Risk Detected"
-                interpret_text = f"Probability < {DISPLAY_THRESHOLD * 100:.0f}%. Continue routine monitoring, maintain healthy lifestyle, and adhere to standard care protocols."
-
-            # ===== Result Card =====
+            # ===== Result Card (removed risk level text) =====
             st.markdown(f"""
             <div class="result-card">
                 <div class="result-number">
                     {death_prob:.1f}<span class="percent">%</span>
                 </div>
                 <div class="result-label">Estimated 10-Year Mortality Probability</div>
-                <div class="result-outcome {outcome_class}">
-                    {outcome_icon} {outcome_text}
-                </div>
                 <div class="result-prob-detail">
                     Predicted Death: {death_prob:.1f}% &nbsp;|&nbsp; Predicted Survival: {survival_prob:.1f}%
                 </div>
@@ -553,13 +512,22 @@ with col_result:
             st.markdown(f"""
             <div class="threshold-note">
                 🔍 Classification Threshold: <strong>{DISPLAY_THRESHOLD:.2f}</strong> 
-                (≥ {DISPLAY_THRESHOLD * 100:.0f}% classified as High Risk)
+                (≥ {DISPLAY_THRESHOLD * 100:.0f}% = High Risk)
             </div>
             """, unsafe_allow_html=True)
 
             # ===== Interpretation =====
             st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
             st.markdown("### 📖 Clinical Interpretation")
+
+            if prob >= DISPLAY_THRESHOLD:
+                interpret_class = "interpret-death"
+                interpret_title = "⚠️ High 10-Year Mortality Risk Detected"
+                interpret_text = f"Probability ≥ {DISPLAY_THRESHOLD * 100:.0f}%. Consider comprehensive clinical evaluation, specialist consultation, and intensive risk factor management."
+            else:
+                interpret_class = "interpret-survive"
+                interpret_title = "✅ Low 10-Year Mortality Risk Detected"
+                interpret_text = f"Probability < {DISPLAY_THRESHOLD * 100:.0f}%. Continue routine monitoring, maintain healthy lifestyle, and adhere to standard care protocols."
 
             st.markdown(f"""
             <div class="interpret-box {interpret_class}">
@@ -574,8 +542,7 @@ with col_result:
 
             # ===== Additional Risk Info =====
             if prob >= 0.7:
-                st.warning(
-                    "🚨 **Very High Risk Alert**: Probability exceeds 70%. Urgent clinical evaluation strongly recommended.")
+                st.warning("🚨 **Very High Risk Alert**: Probability exceeds 70%. Urgent clinical evaluation strongly recommended.")
             elif prob >= 0.5:
                 st.warning("⚠️ **High Risk Alert**: Probability ≥ 50%. Clinical evaluation recommended.")
             elif prob >= 0.3:
@@ -609,11 +576,11 @@ with col_result:
         </div>
         """, unsafe_allow_html=True)
 
+
 # ==================== Global Feature Importance ====================
 st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
 st.markdown("### 📈 Global Feature Importance Analysis")
-st.caption(
-    "Feature importance based on the Random Forest model - showing the relative contribution of each clinical variable to the prediction")
+st.caption("Feature importance based on the Random Forest model - showing the relative contribution of each clinical variable to the prediction")
 
 try:
     importance = model.feature_importances_
@@ -624,7 +591,6 @@ try:
         'Importance': importance
     }).sort_values('Importance', ascending=True)
 
-    # Create figure with larger size for 29 features
     fig, ax = plt.subplots(figsize=(12, 8))
     colors_imp = plt.cm.Blues(np.linspace(0.3, 0.9, len(imp_df)))[::-1]
     ax.barh(imp_df['Feature'], imp_df['Importance'], color=colors_imp, edgecolor='white', linewidth=0.5)
@@ -634,7 +600,6 @@ try:
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
 
-    # Add value labels
     for i, (idx, row) in enumerate(imp_df.iterrows()):
         ax.text(row['Importance'] + 0.002, i, f"{row['Importance']:.3f}",
                 va='center', fontsize=8, color='#1a1a2e')
@@ -649,13 +614,13 @@ try:
             hide_index=True
         )
 
-        # Top 10 features
         st.markdown("#### 🔝 Top 10 Most Important Features")
         top10 = imp_df.sort_values('Importance', ascending=False).head(10)
         st.dataframe(top10, use_container_width=True, hide_index=True)
 
 except Exception as e:
     st.warning(f"⚠️ Unable to display feature importance: {str(e)}")
+
 
 # ==================== User Guide ====================
 st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
@@ -704,6 +669,7 @@ with col_help3:
     - Cross-validation AUC: {model_info.get('cv_auc', 0.870):.3f}
     """)
 
+
 # ==================== Additional Notes ====================
 st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
 with st.expander("ℹ️ Important Clinical Notes & Limitations"):
@@ -731,6 +697,7 @@ with st.expander("ℹ️ Important Clinical Notes & Limitations"):
     - Last Updated: 2026
     - Cohort: NHANES 2011-2018
     """)
+
 
 # ==================== Footer ====================
 st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
