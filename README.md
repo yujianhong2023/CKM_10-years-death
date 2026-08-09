@@ -67,13 +67,13 @@ CRP (C-Reactive Protein, mg/L)
 
 LBDSPHSI (Serum Phosphorus, mmol/L)
 
-LBXIN (Serum Insulin, µg/L)
+LBXIN (Serum Insulin, uU/L))
 
 ABSI (A Body Shape Index)
 
 SII (Systemic Immune-Inflammation Index, ×10⁹/L)
 
-SHR (Systemic Hemodynamic Ratio, ×10⁹/L)
+SHR (Systemic Hemodynamic Ratio)
 
 🚀 Model Performance
 Algorithm: Random Forest Classifier
