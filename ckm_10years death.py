@@ -89,6 +89,25 @@ st.markdown("""
         color: #6c757d;
         margin-top: 0.2rem;
     }
+    .result-outcome {
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin-top: 0.6rem;
+        padding: 0.5rem 2rem;
+        border-radius: 8px;
+        display: inline-block;
+        letter-spacing: 0.5px;
+    }
+    .outcome-mortality {
+        color: #dc3545;
+        background-color: #f8d7da;
+        border: 2px solid #dc3545;
+    }
+    .outcome-survived {
+        color: #28a745;
+        background-color: #d4edda;
+        border: 2px solid #28a745;
+    }
     .result-prob-detail {
         margin-top: 0.4rem;
         font-size: 0.8rem;
@@ -147,11 +166,11 @@ st.markdown("""
         padding: 0.7rem 1rem;
         border-left: 4px solid;
     }
-    .interpret-death {
+    .interpret-mortality {
         background-color: #f8d7da;
         border-color: #dc3545;
     }
-    .interpret-survive {
+    .interpret-survived {
         background-color: #d4edda;
         border-color: #28a745;
     }
@@ -203,16 +222,16 @@ def load_model():
 
     # 构建可能的路径列表（优先使用相对路径）
     possible_paths = [
-        os.path.join(current_dir, model_filename),  # 当前目录
-        os.path.join(os.path.dirname(current_dir), model_filename),  # 上级目录
-        os.path.join(current_dir, 'models', model_filename),  # models子目录
-        os.path.join(current_dir, 'model', model_filename),  # model子目录
-        os.path.join(current_dir, 'assets', model_filename),  # assets子目录
-        os.path.join(current_dir, 'data', model_filename),  # data子目录
+        os.path.join(current_dir, model_filename),
+        os.path.join(os.path.dirname(current_dir), model_filename),
+        os.path.join(current_dir, 'models', model_filename),
+        os.path.join(current_dir, 'model', model_filename),
+        os.path.join(current_dir, 'assets', model_filename),
+        os.path.join(current_dir, 'data', model_filename),
     ]
 
     # 本地Windows开发环境路径（仅在本地运行时使用）
-    if os.name == 'nt':  # Windows系统
+    if os.name == 'nt':
         possible_paths.extend([
             r"C:\Users\admin\PycharmProjects\PythonProject9\CKM_10_year_death\ckm_risk_model_10yr.pkl",
             r"C:\Users\admin\PycharmProjects\PythonProject9\ckm_risk_model_10yr.pkl"
@@ -325,7 +344,6 @@ edu_map = {
     "Some college/AA degree": 4,
     "College graduate or above": 5
 }
-# ===== MODIFIED: PIR Group as 3 categories =====
 pir_group_map = {
     "PIR < 1.0": 1,
     "1.0 ≤ PIR < 3.0": 2,
@@ -370,7 +388,6 @@ with col_input:
 
     col_pir, col_smoke, col_activity = st.columns(3)
     with col_pir:
-        # ===== MODIFIED: PIR Group with 3 categories =====
         pir = st.selectbox(
             "PIR Group",
             options=list(pir_group_map.keys()),
@@ -476,7 +493,7 @@ def create_input_data():
         'AGE': age,
         'RACE': race_map[race],
         'EDU': edu_map[edu],
-        'PIR_GROUP': pir_group_map[pir],  # ===== MODIFIED: PIR Group with 3 categories =====
+        'PIR_GROUP': pir_group_map[pir],
         'SMOKE': smoke_map[smoke],
         'ACTIVITY': activity_map[activity],
         'N': n,
@@ -527,13 +544,32 @@ with col_result:
             death_prob = prob * 100
             survival_prob = (1 - prob) * 100
 
-            # ===== Result Card (removed risk level text) =====
+            # Determine outcome using 50% threshold
+            if prob >= DISPLAY_THRESHOLD:
+                outcome_text = "Mortality"
+                outcome_class = "outcome-mortality"
+                outcome_icon = "⚠️"
+                interpret_class = "interpret-mortality"
+                interpret_title = "⚠️ High 10-Year Mortality Risk Detected"
+                interpret_text = f"Probability ≥ {DISPLAY_THRESHOLD * 100:.0f}%. Consider comprehensive clinical evaluation, specialist consultation, and intensive risk factor management."
+            else:
+                outcome_text = "Survived"
+                outcome_class = "outcome-survived"
+                outcome_icon = "✅"
+                interpret_class = "interpret-survived"
+                interpret_title = "✅ Low 10-Year Mortality Risk Detected"
+                interpret_text = f"Probability < {DISPLAY_THRESHOLD * 100:.0f}%. Continue routine monitoring, maintain healthy lifestyle, and adhere to standard care protocols."
+
+            # ===== Result Card =====
             st.markdown(f"""
             <div class="result-card">
                 <div class="result-number">
                     {death_prob:.1f}<span class="percent">%</span>
                 </div>
                 <div class="result-label">Estimated 10-Year Mortality Probability</div>
+                <div class="result-outcome {outcome_class}">
+                    {outcome_icon} {outcome_text}
+                </div>
                 <div class="result-prob-detail">
                     Predicted Death: {death_prob:.1f}% &nbsp;|&nbsp; Predicted Survival: {survival_prob:.1f}%
                 </div>
@@ -559,15 +595,6 @@ with col_result:
             # ===== Interpretation =====
             st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
             st.markdown("### 📖 Clinical Interpretation")
-
-            if prob >= DISPLAY_THRESHOLD:
-                interpret_class = "interpret-death"
-                interpret_title = "⚠️ High 10-Year Mortality Risk Detected"
-                interpret_text = f"Probability ≥ {DISPLAY_THRESHOLD * 100:.0f}%. Consider comprehensive clinical evaluation, specialist consultation, and intensive risk factor management."
-            else:
-                interpret_class = "interpret-survive"
-                interpret_title = "✅ Low 10-Year Mortality Risk Detected"
-                interpret_text = f"Probability < {DISPLAY_THRESHOLD * 100:.0f}%. Continue routine monitoring, maintain healthy lifestyle, and adhere to standard care protocols."
 
             st.markdown(f"""
             <div class="interpret-box {interpret_class}">
@@ -684,9 +711,9 @@ with col_help2:
     st.markdown("""
     **📊 Understanding Results**
     - **Mortality Probability**: Estimated 10-year risk (0-100%)
-    - **Risk Classification**: 
-      - High Risk: ≥ 50% probability
-      - Low Risk: < 50% probability
+    - **Predicted Outcome**: 
+      - **Mortality**: ≥ 50% probability
+      - **Survived**: < 50% probability
     - **Visual Bar**: Shows probability distribution
     - **Clinical Interpretation**: Tailored recommendations based on risk level
 
