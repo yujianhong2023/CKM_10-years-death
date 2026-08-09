@@ -396,13 +396,14 @@ with col_input:
         crp = st.number_input("CRP (mg/L)", min_value=0.0, max_value=100.0, value=5.0, step=0.5,
                               help="C-Reactive Protein")
     with col_lbdphs:
-        lbdphs = st.number_input("Phosphorus (mmol/L)", min_value=0.0, max_value=20.0, value=5.0, step=0.1,
+        # ===== MODIFIED: Keep variable name LBDSPHSI, display as "LBDSPHSI (Phosphorus, mmol/L)" =====
+        lbdphs = st.number_input("LBDSPHSI (Phosphorus, mmol/L)", min_value=0.0, max_value=20.0, value=5.0, step=0.1,
                                  help="Serum Phosphorus")
 
     col_lbxin, col_cancer, col_lung, col_ckm = st.columns(4)
     with col_lbxin:
-        # ===== MODIFIED: LBXIN label updated to uU/mL =====
-        lbxin = st.number_input("Insulin (uU/mL)", min_value=0.0, max_value=20.0, value=1.0, step=0.1,
+        # ===== MODIFIED: Keep variable name LBXIN, display as "LBXIN (Serum Insulin, uU/mL)" =====
+        lbxin = st.number_input("LBXIN (Serum Insulin, uU/mL)", min_value=0.0, max_value=20.0, value=1.0, step=0.1,
                                 help="Serum Insulin")
     with col_cancer:
         cancer = st.selectbox("Cancer History", options=["No", "Yes"])
@@ -452,8 +453,8 @@ def create_input_data():
         'HBA1C': hba1c,
         'LDL_GROUP': ldl_group_map[ldl],
         'CRP': crp,
-        'LBDSPHSI': lbdphs,
-        'LBXIN': lbxin,
+        'LBDSPHSI': lbdphs,  # Variable name matches pkl file
+        'LBXIN': lbxin,      # Variable name matches pkl file
         'CANCER': cancer_map[cancer],
         'LUNG': lung_map[lung],
         'CKM': ckm_map[ckm],
