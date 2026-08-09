@@ -195,14 +195,39 @@ st.markdown("""
 @st.cache_resource
 def load_model():
     """Load trained model and preprocessors for 10-year mortality"""
-    current_dir = os.path.dirname(os.path.abspath(__file__))
+    import os
 
+    # 获取当前文件所在目录
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    model_filename = 'ckm_risk_model_10yr.pkl'
+
+    # 构建可能的路径列表（优先使用相对路径）
     possible_paths = [
-        os.path.join(current_dir, 'ckm_risk_model_10yr.pkl'),
-        r"C:\Users\admin\PycharmProjects\PythonProject9\CKM_10_year_death\ckm_risk_model_10yr.pkl",
-        r"C:\Users\admin\PycharmProjects\PythonProject9\ckm_risk_model_10yr.pkl"
+        os.path.join(current_dir, model_filename),  # 当前目录
+        os.path.join(os.path.dirname(current_dir), model_filename),  # 上级目录
+        os.path.join(current_dir, 'models', model_filename),  # models子目录
+        os.path.join(current_dir, 'model', model_filename),  # model子目录
+        os.path.join(current_dir, 'assets', model_filename),  # assets子目录
+        os.path.join(current_dir, 'data', model_filename),  # data子目录
     ]
 
+    # 本地Windows开发环境路径（仅在本地运行时使用）
+    if os.name == 'nt':  # Windows系统
+        possible_paths.extend([
+            r"C:\Users\admin\PycharmProjects\PythonProject9\CKM_10_year_death\ckm_risk_model_10yr.pkl",
+            r"C:\Users\admin\PycharmProjects\PythonProject9\ckm_risk_model_10yr.pkl"
+        ])
+
+    # 去重并保留顺序
+    seen = set()
+    unique_paths = []
+    for path in possible_paths:
+        if path not in seen:
+            seen.add(path)
+            unique_paths.append(path)
+    possible_paths = unique_paths
+
+    # 尝试所有可能的路径
     for model_path in possible_paths:
         if os.path.exists(model_path):
             try:
@@ -212,8 +237,19 @@ def load_model():
             except Exception as e:
                 continue
 
-    st.error("❌ Model file 'ckm_risk_model_10yr.pkl' not found. Please ensure the model file exists in the correct path.")
-    st.info("💡 Expected paths checked:\n" + "\n".join(possible_paths))
+    # 如果所有路径都失败，显示详细的错误信息
+    st.error("❌ Model file 'ckm_risk_model_10yr.pkl' not found.")
+    st.info("💡 Please ensure the model file exists in the repository root directory.")
+
+    # 显示当前目录内容帮助调试
+    try:
+        files = os.listdir(current_dir)
+        st.write("📁 Files in current directory:")
+        for file in files:
+            st.write(f"  - {file}")
+    except Exception as e:
+        pass
+
     return None
 
 
@@ -289,12 +325,11 @@ edu_map = {
     "Some college/AA degree": 4,
     "College graduate or above": 5
 }
+# ===== MODIFIED: PIR Group as 3 categories =====
 pir_group_map = {
-    "≤1.0": 1,
-    "1.0-1.9": 2,
-    "2.0-2.9": 3,
-    "3.0-3.9": 4,
-    "≥4.0": 5
+    "PIR < 1.0": 1,
+    "1.0 ≤ PIR < 3.0": 2,
+    "PIR ≥ 3.0": 3
 }
 smoke_map = {
     "Never": 0,
@@ -335,7 +370,12 @@ with col_input:
 
     col_pir, col_smoke, col_activity = st.columns(3)
     with col_pir:
-        pir = st.selectbox("PIR Group", options=list(pir_group_map.keys()), help="Poverty Income Ratio")
+        # ===== MODIFIED: PIR Group with 3 categories =====
+        pir = st.selectbox(
+            "PIR Group",
+            options=list(pir_group_map.keys()),
+            help="Poverty Income Ratio (PIR < 1.0: Below poverty, 1.0 ≤ PIR < 3.0: Low to middle income, PIR ≥ 3.0: High income)"
+        )
     with col_smoke:
         smoke = st.selectbox("Smoking Status", options=list(smoke_map.keys()))
     with col_activity:
@@ -349,7 +389,8 @@ with col_input:
 
     # ===== Continuous Variables =====
     st.markdown('<div class="input-card">', unsafe_allow_html=True)
-    st.markdown('<div class="input-card-title">📊 Clinical Measurements & Laboratory Values</div>', unsafe_allow_html=True)
+    st.markdown('<div class="input-card-title">📊 Clinical Measurements & Laboratory Values</div>',
+                unsafe_allow_html=True)
 
     col_age, col_n, col_hgb = st.columns(3)
     with col_age:
@@ -396,13 +437,11 @@ with col_input:
         crp = st.number_input("CRP (mg/L)", min_value=0.0, max_value=100.0, value=5.0, step=0.5,
                               help="C-Reactive Protein")
     with col_lbdphs:
-        # ===== MODIFIED: Keep variable name LBDSPHSI, display as "LBDSPHSI (Phosphorus, mmol/L)" =====
         lbdphs = st.number_input("LBDSPHSI (Phosphorus, mmol/L)", min_value=0.0, max_value=20.0, value=5.0, step=0.1,
                                  help="Serum Phosphorus")
 
     col_lbxin, col_cancer, col_lung, col_ckm = st.columns(4)
     with col_lbxin:
-        # ===== MODIFIED: Keep variable name LBXIN, display as "LBXIN (Serum Insulin, uU/mL)" =====
         lbxin = st.number_input("LBXIN (Serum Insulin, uU/mL)", min_value=0.0, max_value=20.0, value=1.0, step=0.1,
                                 help="Serum Insulin")
     with col_cancer:
@@ -437,7 +476,7 @@ def create_input_data():
         'AGE': age,
         'RACE': race_map[race],
         'EDU': edu_map[edu],
-        'PIR_GROUP': pir_group_map[pir],
+        'PIR_GROUP': pir_group_map[pir],  # ===== MODIFIED: PIR Group with 3 categories =====
         'SMOKE': smoke_map[smoke],
         'ACTIVITY': activity_map[activity],
         'N': n,
@@ -453,8 +492,8 @@ def create_input_data():
         'HBA1C': hba1c,
         'LDL_GROUP': ldl_group_map[ldl],
         'CRP': crp,
-        'LBDSPHSI': lbdphs,  # Variable name matches pkl file
-        'LBXIN': lbxin,      # Variable name matches pkl file
+        'LBDSPHSI': lbdphs,
+        'LBXIN': lbxin,
         'CANCER': cancer_map[cancer],
         'LUNG': lung_map[lung],
         'CKM': ckm_map[ckm],
@@ -543,7 +582,8 @@ with col_result:
 
             # ===== Additional Risk Info =====
             if prob >= 0.7:
-                st.warning("🚨 **Very High Risk Alert**: Probability exceeds 70%. Urgent clinical evaluation strongly recommended.")
+                st.warning(
+                    "🚨 **Very High Risk Alert**: Probability exceeds 70%. Urgent clinical evaluation strongly recommended.")
             elif prob >= 0.5:
                 st.warning("⚠️ **High Risk Alert**: Probability ≥ 50%. Clinical evaluation recommended.")
             elif prob >= 0.3:
@@ -577,11 +617,11 @@ with col_result:
         </div>
         """, unsafe_allow_html=True)
 
-
 # ==================== Global Feature Importance ====================
 st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
 st.markdown("### 📈 Global Feature Importance Analysis")
-st.caption("Feature importance based on the Random Forest model - showing the relative contribution of each clinical variable to the prediction")
+st.caption(
+    "Feature importance based on the Random Forest model - showing the relative contribution of each clinical variable to the prediction")
 
 try:
     importance = model.feature_importances_
@@ -621,7 +661,6 @@ try:
 
 except Exception as e:
     st.warning(f"⚠️ Unable to display feature importance: {str(e)}")
-
 
 # ==================== User Guide ====================
 st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
@@ -670,7 +709,6 @@ with col_help3:
     - Cross-validation AUC: {model_info.get('cv_auc', 0.870):.3f}
     """)
 
-
 # ==================== Additional Notes ====================
 st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
 with st.expander("ℹ️ Important Clinical Notes & Limitations"):
@@ -698,7 +736,6 @@ with st.expander("ℹ️ Important Clinical Notes & Limitations"):
     - Last Updated: 2026
     - Cohort: NHANES 2011-2018
     """)
-
 
 # ==================== Footer ====================
 st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
